@@ -22,10 +22,10 @@ where
         + BitXor<BM::Bdd, Output = BM::Bdd>
         + BitXor<&'b BM::Bdd, Output = BM::Bdd>,
 {
+    manager: BM,
+    trans: Vec<BM::Bdd>,
     pre_eliminate: Vec<Vec<usize>>,
-    pre_trans: Vec<BM::Bdd>,
     post_eliminate: Vec<Vec<usize>>,
-    post_trans: Vec<BM::Bdd>,
 }
 
 impl<BM: BddManager> Trans<BM>
@@ -57,10 +57,10 @@ where
         let pre_eliminate = Self::build_schedule(&trans, manager.next_state_vars());
         let post_eliminate = Self::build_schedule(&trans, manager.state_vars());
         Self {
+            manager: manager.clone(),
             pre_eliminate,
-            pre_trans: trans.clone(),
+            trans: trans,
             post_eliminate,
-            post_trans: trans,
         }
     }
 
@@ -132,6 +132,8 @@ where
             for tran in trans {
                 if !res.contains(&tran) {
                     res.push(tran);
+                } else {
+                    panic!();
                 }
             }
             res
@@ -146,7 +148,7 @@ where
     pub fn pre_image(&self, state: &BM::Bdd) -> BM::Bdd {
         let mut res = state.next_state();
         for i in 0..self.pre_eliminate.len() {
-            res = res.and_abstract(&self.pre_trans[i], self.pre_eliminate[i].iter().copied());
+            res = res.and_abstract(&self.trans[i], self.pre_eliminate[i].iter().copied());
         }
         res
     }
@@ -154,31 +156,25 @@ where
     pub fn post_image(&self, state: &BM::Bdd) -> BM::Bdd {
         let mut res = state.clone();
         for i in 0..self.post_eliminate.len() {
-            res = res.and_abstract(&self.post_trans[i], self.post_eliminate[i].iter().copied());
+            res = res.and_abstract(&self.trans[i], self.post_eliminate[i].iter().copied());
         }
         res.previous_state()
     }
 
     pub fn product(&self, other: &Self) -> Self {
-        todo!()
+        assert!(self.manager == other.manager);
+        let mut trans = self.trans.clone();
+        trans.extend(other.trans.clone());
+        Self::build(&self.manager, trans)
     }
 
     pub fn clone_with_new_manager(&self, manager: &BM) -> Self {
-        let pre_trans = self
-            .pre_trans
-            .iter()
-            .map(|t| manager.translocate(t))
-            .collect();
-        let post_trans = self
-            .post_trans
-            .iter()
-            .map(|t| manager.translocate(t))
-            .collect();
+        let trans = self.trans.iter().map(|t| manager.translocate(t)).collect();
         Self {
+            manager: manager.clone(),
+            trans,
             pre_eliminate: self.pre_eliminate.clone(),
-            pre_trans,
             post_eliminate: self.post_eliminate.clone(),
-            post_trans: post_trans,
         }
     }
 }

@@ -1,4 +1,3 @@
-pub mod partition;
 mod trans;
 pub use trans::*;
 
@@ -24,7 +23,7 @@ where
     pub init: BM::Bdd,
     pub invariants: BM::Bdd,
     pub trans: Trans<BM>,
-    pub fair: BM::Bdd,
+    pub justice: Vec<BM::Bdd>,
 }
 
 impl<BM: BddManager> FsmBdd<BM>
@@ -38,19 +37,22 @@ where
         + BitXor<&'b BM::Bdd, Output = BM::Bdd>,
 {
     pub fn product(&self, other: &Self) -> Self {
-        // let mut symbols = self.symbols.clone();
-        // symbols.extend(other.symbols.clone().into_iter());
-        // let init = &self.init & &other.init;
-        // let trans = self.trans.product(&other.trans);
-        // let fair = &self.fair & &other.fair;
-        // Self {
-        //     symbols,
-        //     manager: self.manager.clone(),
-        //     init,
-        //     trans,
-        //     fair,
-        // }
-        todo!()
+        assert!(self.manager == other.manager);
+        let mut symbols = self.symbols.clone();
+        symbols.extend(other.symbols.clone());
+        let init = &self.init & &other.init;
+        let invariants = &self.invariants & &other.invariants;
+        let trans = self.trans.product(&other.trans);
+        let mut justice = self.justice.clone();
+        justice.extend(other.justice.clone());
+        Self {
+            symbols,
+            manager: self.manager.clone(),
+            init,
+            trans,
+            justice,
+            invariants,
+        }
     }
 
     pub fn pre_image(&self, state: &BM::Bdd) -> BM::Bdd {
@@ -101,10 +103,17 @@ where
     }
 
     pub fn fair_cycle_with_constrain(&self, constrain: &BM::Bdd) -> BM::Bdd {
-        let mut res = self.fair.clone() & constrain;
+        let mut res = constrain.clone();
+        let mut y = 0;
         loop {
-            let backward = self.reachable_with_constrain(&res, false, false, constrain);
-            let new = &res & backward;
+            y += 1;
+            dbg!(y);
+            let mut new = res.clone();
+            for fair in self.justice.iter() {
+                let fair = fair & &res;
+                let backward = self.reachable_with_constrain(&fair, false, false, constrain);
+                new &= backward;
+            }
             if new == res {
                 break res;
             }
@@ -120,14 +129,18 @@ where
         let manager = BM::new();
         let trans = self.trans.clone_with_new_manager(&manager);
         let init = manager.translocate(&self.init);
-        let fair = manager.translocate(&self.fair);
+        let justice = self
+            .justice
+            .iter()
+            .map(|justice| manager.translocate(&justice))
+            .collect();
         let invariants = manager.translocate(&self.invariants);
         Self {
             symbols: self.symbols.clone(),
             manager,
             init,
             trans,
-            fair,
+            justice,
             invariants,
         }
     }
