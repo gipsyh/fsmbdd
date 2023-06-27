@@ -76,10 +76,10 @@ where
         } else {
             self.manager.constant(false)
         };
-        let mut x = 0;
+        // let mut x = 0;
         loop {
-            x += 1;
-            dbg!(x);
+            // x += 1;
+            // dbg!(x);
             let new_frontier = if forward {
                 self.post_image(&frontier)
             } else {
