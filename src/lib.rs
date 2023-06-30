@@ -76,10 +76,10 @@ where
         } else {
             self.manager.constant(false)
         };
-        // let mut x = 0;
+        let mut x = 0;
         loop {
-            // x += 1;
-            // dbg!(x);
+            x += 1;
+            dbg!(x);
             let new_frontier = if forward {
                 self.post_image(&frontier)
             } else {
@@ -132,7 +132,7 @@ where
         let justice = self
             .justice
             .iter()
-            .map(|justice| manager.translocate(&justice))
+            .map(|justice| manager.translocate(justice))
             .collect();
         let invariants = manager.translocate(&self.invariants);
         Self {

@@ -59,16 +59,16 @@ where
         Self {
             manager: manager.clone(),
             pre_eliminate,
-            trans: trans,
+            trans,
             post_eliminate,
         }
     }
 
     fn monolithic_new(manager: &BM, trans: Vec<BM::Bdd>) -> Self {
         let mut res = manager.constant(true);
-        for i in 0..trans.len() {
+        for (i, tran) in trans.iter().enumerate() {
             dbg!(i);
-            res &= &trans[i];
+            res &= tran;
         }
         Self::build(manager, vec![res])
     }
@@ -146,25 +146,38 @@ where
     }
 
     pub fn pre_image(&self, state: &BM::Bdd) -> BM::Bdd {
-        let mut res = state.next_state();
-        for i in 0..self.pre_eliminate.len() {
-            res = res.and_abstract(&self.trans[i], self.pre_eliminate[i].iter().copied());
+        if self.trans.len() == 1 {
+            state.pre_image(&self.trans[0])
+        } else {
+            let mut res = state.next_state();
+            for i in 0..self.pre_eliminate.len() {
+                res = res.and_abstract(&self.trans[i], self.pre_eliminate[i].iter().copied());
+            }
+            res
         }
-        res
     }
 
     pub fn post_image(&self, state: &BM::Bdd) -> BM::Bdd {
-        let mut res = state.clone();
-        for i in 0..self.post_eliminate.len() {
-            res = res.and_abstract(&self.trans[i], self.post_eliminate[i].iter().copied());
+        if self.trans.len() == 1 {
+            state.post_image(&self.trans[0])
+        } else {
+            let mut res = state.clone();
+            for i in 0..self.post_eliminate.len() {
+                res = res.and_abstract(&self.trans[i], self.post_eliminate[i].iter().copied());
+            }
+            res.previous_state()
         }
-        res.previous_state()
     }
 
     pub fn product(&self, other: &Self) -> Self {
         assert!(self.manager == other.manager);
-        let mut trans = self.trans.clone();
-        trans.extend(other.trans.clone());
+        let trans = if self.trans.len() == 1 && other.trans.len() == 1 {
+            vec![&self.trans[0] & &other.trans[0]]
+        } else {
+            let mut trans = self.trans.clone();
+            trans.extend(other.trans.clone());
+            trans
+        };
         Self::build(&self.manager, trans)
     }
 
