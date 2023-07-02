@@ -23,7 +23,7 @@ where
         + BitXor<&'b BM::Bdd, Output = BM::Bdd>,
 {
     manager: BM,
-    trans: Vec<BM::Bdd>,
+    pub(crate) trans: Vec<BM::Bdd>,
     pre_eliminate: Vec<Vec<usize>>,
     post_eliminate: Vec<Vec<usize>>,
 }
