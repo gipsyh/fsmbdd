@@ -171,13 +171,8 @@ where
 
     pub fn product(&self, other: &Self) -> Self {
         assert!(self.manager == other.manager);
-        // let trans = if self.trans.len() == 1 && other.trans.len() == 1 {
-        //     vec![&self.trans[0] & &other.trans[0]]
-        // } else {
         let mut trans = self.trans.clone();
         trans.extend(other.trans.clone());
-        // trans
-        // };
         Self::build(&self.manager, trans)
     }
 
