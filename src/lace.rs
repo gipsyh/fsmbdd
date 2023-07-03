@@ -1,7 +1,7 @@
 use std::ffi::c_int;
 
-use crate::FsmBdd;
-use sylvan::{Bdd, Sylvan};
+use crate::{FsmBdd, Trans};
+use sylvan::{Bdd, LaceWorkerContext, Sylvan};
 
 extern "C" {
     pub fn lace_reachable(
@@ -70,5 +70,59 @@ impl FsmBdd<Sylvan> {
 
     pub fn lace_fair_cycle(&self) -> Bdd {
         self.lace_fair_cycle_with_constrain(&self.manager.constant(true))
+    }
+}
+
+impl Trans<Sylvan> {
+    pub fn lace_spawn_post_image(&self, context: &mut LaceWorkerContext, state: &Bdd) {
+        if self.trans.len() == 1 {
+            context.spawn_post_image(state, &self.trans[0]);
+        } else {
+            todo!()
+        }
+    }
+
+    pub fn lace_sync_post_image(&self, context: &mut LaceWorkerContext) -> Bdd {
+        if self.trans.len() == 1 {
+            context.sync_post_image()
+        } else {
+            todo!()
+        }
+    }
+
+    pub fn lace_spawn_pre_image(&self, context: &mut LaceWorkerContext, state: &Bdd) {
+        if self.trans.len() == 1 {
+            context.spawn_pre_image(state, &self.trans[0]);
+        } else {
+            todo!()
+        }
+    }
+
+    pub fn lace_sync_pre_image(&self, context: &mut LaceWorkerContext) -> Bdd {
+        if self.trans.len() == 1 {
+            context.sync_pre_image()
+        } else {
+            todo!()
+        }
+    }
+}
+
+impl FsmBdd<Sylvan> {
+    pub fn lace_spawn_post_image(&self, context: &mut LaceWorkerContext, state: &Bdd) {
+        self.trans
+            .lace_spawn_post_image(context, &(state & &self.invariants));
+    }
+
+    pub fn lace_sync_post_image(&self, context: &mut LaceWorkerContext) -> Bdd {
+        self.trans.lace_sync_post_image(context) & &self.invariants
+    }
+
+    pub fn lace_spawn_pre_image(&self, context: &mut LaceWorkerContext, state: &Bdd) {
+        self.trans
+            .lace_spawn_pre_image(context, &(state & &self.invariants));
+    }
+
+    pub fn lace_sync_pre_image(&self, context: &mut LaceWorkerContext) -> Bdd {
+        self.trans.lace_sync_pre_image(context) & &self.invariants
     }
 }
