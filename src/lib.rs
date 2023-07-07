@@ -1,9 +1,6 @@
 mod trans;
 pub use trans::*;
 
-mod lace;
-pub use lace::*;
-
 use bdds::BddManager;
 use std::{
     collections::HashMap,
