@@ -1,61 +1,5 @@
 use crate::{FsmBdd, Trans};
-use sylvan::{lace_call_back, Bdd, LaceCallback, LaceWorkerContext, Sylvan};
-
-struct LaceReachableFromInitCallbackArg<'a> {
-    fsmbdd: &'a FsmBdd<Sylvan>,
-}
-
-pub struct LaceReachableFromInitCallback;
-
-impl LaceCallback<LaceReachableFromInitCallbackArg<'_>, Bdd> for LaceReachableFromInitCallback {
-    fn callback(
-        _context: LaceWorkerContext,
-        arg: &mut LaceReachableFromInitCallbackArg<'_>,
-    ) -> Bdd {
-        arg.fsmbdd.reachable_from_init()
-    }
-}
-
-impl FsmBdd<Sylvan> {
-    pub fn lace_reachable_from_init(&self) -> Bdd {
-        let mut arg = LaceReachableFromInitCallbackArg { fsmbdd: self };
-        lace_call_back::<LaceReachableFromInitCallback, LaceReachableFromInitCallbackArg<'_>, Bdd>(
-            &mut arg,
-        )
-    }
-}
-
-struct LaceFairCycleWithConstrainCallbackArg<'a> {
-    fsmbdd: &'a FsmBdd<Sylvan>,
-    constrain: &'a Bdd,
-}
-
-pub struct LaceFairCycleWithConstrainCallback;
-
-impl LaceCallback<LaceFairCycleWithConstrainCallbackArg<'_>, Bdd>
-    for LaceFairCycleWithConstrainCallback
-{
-    fn callback(
-        _context: LaceWorkerContext,
-        arg: &mut LaceFairCycleWithConstrainCallbackArg<'_>,
-    ) -> Bdd {
-        arg.fsmbdd.fair_cycle_with_constrain(arg.constrain)
-    }
-}
-
-impl FsmBdd<Sylvan> {
-    pub fn lace_fair_cycle_with_constrain(&self, constrain: &Bdd) -> Bdd {
-        let mut arg = LaceFairCycleWithConstrainCallbackArg {
-            fsmbdd: self,
-            constrain,
-        };
-        lace_call_back::<
-            LaceFairCycleWithConstrainCallback,
-            LaceFairCycleWithConstrainCallbackArg<'_>,
-            Bdd,
-        >(&mut arg)
-    }
-}
+use sylvan::{Bdd, LaceWorkerContext, Sylvan};
 
 impl Trans<Sylvan> {
     pub fn lace_spawn_post_image(&self, context: &mut LaceWorkerContext, state: &Bdd) {
@@ -93,20 +37,24 @@ impl Trans<Sylvan> {
 
 impl FsmBdd<Sylvan> {
     pub fn lace_spawn_post_image(&self, context: &mut LaceWorkerContext, state: &Bdd) {
-        self.trans
-            .lace_spawn_post_image(context, &(state & &self.invariants));
+        let trans = self.trans.clone();
+        let state = state.clone();
+        let invariants = self.invariants.clone();
+        context.lace_spawn(move |_| trans.post_image(&state) & invariants);
     }
 
     pub fn lace_sync_post_image(&self, context: &mut LaceWorkerContext) -> Bdd {
-        self.trans.lace_sync_post_image(context) & &self.invariants
+        context.lace_sync::<Bdd>()
     }
 
     pub fn lace_spawn_pre_image(&self, context: &mut LaceWorkerContext, state: &Bdd) {
-        self.trans
-            .lace_spawn_pre_image(context, &(state & &self.invariants));
+        let trans = self.trans.clone();
+        let state = state.clone();
+        let invariants = self.invariants.clone();
+        context.lace_spawn(move |_| trans.pre_image(&state) & invariants);
     }
 
     pub fn lace_sync_pre_image(&self, context: &mut LaceWorkerContext) -> Bdd {
-        self.trans.lace_sync_pre_image(context) & &self.invariants
+        context.lace_sync::<Bdd>()
     }
 }
